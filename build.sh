@@ -16,6 +16,17 @@ mkdir -p "$(dirname "$OUT_FILE")"
 # Build the requested sysext.
 (cd "$NAME" && mkosi --force build)
 
+# Drop compiled caches that would shadow host versions on overlay merge.
+# Each cache covers all schemas/mime types/icons available system-wide; the
+# sysext only sees a subset, so its cache is a strict regression for anything
+# the host already had compiled.
+sudo rm -f \
+    "$EXT_DIR/usr/share/glib-2.0/schemas/gschemas.compiled" \
+    "$EXT_DIR/usr/share/applications/mimeinfo.cache" \
+    "$EXT_DIR"/usr/share/icons/*/icon-theme.cache \
+    "$EXT_DIR/usr/lib64/gtk-3.0"/*/immodules.cache \
+    "$EXT_DIR/usr/lib64/gtk-4.0"/*/immodules.cache
+
 # Without SELinux relabel here, missing security.selinux xattrs silently
 # break screen-unlock / sudo / polkit (SSH-side PAM is unaffected).
 sudo setfiles -F -r "$EXT_DIR" \
