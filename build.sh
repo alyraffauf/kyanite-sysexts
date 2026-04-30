@@ -3,6 +3,7 @@ set -euo pipefail
 
 NAME="${1:-rocm}"
 KYANITE_IMAGE="${KYANITE_IMAGE:-ghcr.io/alyraffauf/kyanite:stable}"
+PODMAN="${PODMAN:-podman}"
 
 cd "$(dirname -- "${BASH_SOURCE[0]}")"
 
@@ -14,11 +15,11 @@ mkdir -p "$(dirname "$OUT_FILE")"
 
 # Pull and extract kyanite-main as the subtraction base for mkosi's overlay.
 if [ ! -d "$BASE_DIR" ]; then
-    podman pull "$KYANITE_IMAGE"
-    CONTAINER=$(podman create "$KYANITE_IMAGE")
+    $PODMAN pull "$KYANITE_IMAGE"
+    CONTAINER=$($PODMAN create "$KYANITE_IMAGE")
     mkdir -p "$BASE_DIR"
-    podman export "$CONTAINER" | tar -x -C "$BASE_DIR"
-    podman rm "$CONTAINER"
+    $PODMAN export "$CONTAINER" | tar -x -C "$BASE_DIR"
+    $PODMAN rm "$CONTAINER"
 fi
 
 mkosi --force build

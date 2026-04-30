@@ -35,6 +35,7 @@ jobs:
             KEEP_VERSIONS: 3
             GH_REPO: ${{ github.repository }}
             GH_TOKEN: ${{ github.token }}
+            PODMAN: "podman --storage-driver=vfs --root /var/tmp/storage"
         steps:
             - uses: actions/checkout@v4
 
