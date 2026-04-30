@@ -10,11 +10,16 @@ OUT_FILE="output/$NAME.raw"
 
 mkdir -p "$(dirname "$OUT_FILE")"
 
-cat > mkosi.local.conf <<EOF
-[Config]
-Images=base,$NAME
-EOF
-trap 'rm -f mkosi.local.conf' EXIT
+# mkosi v26 builds every sub-image in mkosi.images/ on each invocation and
+# has no working --image filter. Stash the others so only base + $NAME run.
+STASH=$(mktemp -d)
+for d in mkosi.images/*/; do
+    n=$(basename "$d")
+    if [[ "$n" != "base" && "$n" != "$NAME" ]]; then
+        mv "$d" "$STASH/"
+    fi
+done
+trap 'mv "$STASH"/* mkosi.images/ 2>/dev/null; rmdir "$STASH" 2>/dev/null' EXIT
 
 mkosi --force build
 
