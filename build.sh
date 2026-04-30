@@ -10,6 +10,12 @@ OUT_FILE="output/$NAME.raw"
 
 mkdir -p "$(dirname "$OUT_FILE")"
 
+cat > mkosi.local.conf <<EOF
+[Config]
+Images=base,$NAME
+EOF
+trap 'rm -f mkosi.local.conf' EXIT
+
 mkosi --force build
 
 # Without SELinux relabel here, missing security.selinux xattrs silently
