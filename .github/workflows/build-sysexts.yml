@@ -7,35 +7,33 @@ on:
     schedule:
         - cron: '0 6 * * 0'  # weekly Sunday 06:00 UTC, picks up upstream kyanite drift
     workflow_dispatch:
-        inputs:
-            name:
-                description: "Sysext to build"
-                default: "rocm"
-
-concurrency:
-    group: sysexts-${{ inputs.name || 'rocm' }}
-    cancel-in-progress: false
 
 permissions:
     contents: write
 
 jobs:
     build:
-        name: Build ${{ inputs.name || 'rocm' }} sysext
+        name: Build ${{ matrix.name }} sysext
         runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                name: [rocm, steam]
+        concurrency:
+            group: sysexts-${{ matrix.name }}
+            cancel-in-progress: false
         container:
             image: registry.fedoraproject.org/fedora:44
             options: --privileged
             volumes:
                 - /tmp:/var/tmp
         env:
-            NAME: ${{ inputs.name || 'rocm' }}
+            NAME: ${{ matrix.name }}
             ARCH: x86-64
             VERSION: ${{ github.run_number }}
             KEEP_VERSIONS: 3
             GH_REPO: ${{ github.repository }}
             GH_TOKEN: ${{ github.token }}
-            PODMAN: "podman --storage-driver=vfs --root /var/tmp/storage"
         steps:
             - uses: actions/checkout@v4
 
@@ -45,7 +43,6 @@ jobs:
                       mkosi squashfs-tools libseccomp \
                       libselinux-utils selinux-policy-targeted \
                       dnf-plugins-core distribution-gpg-keys \
-                      podman tar \
                       gh
 
             - name: Build sysext

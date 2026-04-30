@@ -1,0 +1,13 @@
+[Transfer]
+Verify=no
+
+[Source]
+Type=url-file
+Path=https://github.com/alyraffauf/kyanite-sysexts/releases/download/sysext-steam
+MatchPattern=steam-@v-x86-64.raw
+
+[Target]
+Type=regular-file
+Path=/var/lib/sysupdate/steam
+MatchPattern=steam-@v-x86-64.raw
+CurrentSymlink=/var/lib/extensions/steam.raw
