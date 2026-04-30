@@ -18,7 +18,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                name: [docker, rocm, steam, syncthing, virt]
+                name: [docker, rocm, steam, syncthing, tailscale, virt]
         concurrency:
             group: sysexts-${{ matrix.name }}
             cancel-in-progress: false
