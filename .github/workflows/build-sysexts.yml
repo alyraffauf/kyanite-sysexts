@@ -4,6 +4,8 @@ on:
     push:
         branches:
             - main
+    schedule:
+        - cron: '0 6 * * 0'  # weekly Sunday 06:00 UTC, picks up upstream kyanite drift
     workflow_dispatch:
         inputs:
             name:
@@ -42,6 +44,7 @@ jobs:
                       mkosi squashfs-tools libseccomp \
                       libselinux-utils selinux-policy-targeted \
                       dnf-plugins-core distribution-gpg-keys \
+                      podman tar \
                       gh
 
             - name: Build sysext
