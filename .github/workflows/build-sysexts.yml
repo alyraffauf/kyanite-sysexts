@@ -12,13 +12,71 @@ permissions:
     contents: write
 
 jobs:
+    select:
+        name: Select sysexts to build
+        runs-on: ubuntu-latest
+        outputs:
+            sysexts: ${{ steps.matrix.outputs.sysexts }}
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 2
+
+            # On schedule / manual / first-build: rebuild everything.
+            # On push: build only sysexts whose own files changed; if shared
+            # build infra changed (build.sh, base/, the workflow), rebuild all.
+            - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+              if: github.event_name == 'push'
+              id: changes
+              with:
+                  list-files: none
+                  filters: |
+                      docker:
+                        - 'docker/**'
+                        - 'sysupdate.d/docker.transfer'
+                      rocm:
+                        - 'rocm/**'
+                        - 'sysupdate.d/rocm.transfer'
+                      steam:
+                        - 'steam/**'
+                        - 'sysupdate.d/steam.transfer'
+                      syncthing:
+                        - 'syncthing/**'
+                        - 'sysupdate.d/syncthing.transfer'
+                      tailscale:
+                        - 'tailscale/**'
+                        - 'sysupdate.d/tailscale.transfer'
+                      virt:
+                        - 'virt/**'
+                        - 'sysupdate.d/virt.transfer'
+                      shared:
+                        - 'build.sh'
+                        - 'base/**'
+                        - '.github/workflows/build-sysexts.yml'
+
+            - id: matrix
+              env:
+                  ALL: '["docker","rocm","steam","syncthing","tailscale","virt"]'
+                  CHANGES: ${{ steps.changes.outputs.changes }}
+                  SHARED: ${{ steps.changes.outputs.shared }}
+              run: |
+                  if [[ "${{ github.event_name }}" != "push" || "$SHARED" == "true" ]]; then
+                      echo "sysexts=$ALL" >>"$GITHUB_OUTPUT"
+                  else
+                      # Drop the synthetic 'shared' entry from the changed list.
+                      filtered=$(echo "$CHANGES" | jq -c 'map(select(. != "shared"))')
+                      echo "sysexts=$filtered" >>"$GITHUB_OUTPUT"
+                  fi
+
     build:
         name: Build ${{ matrix.name }} sysext
+        needs: select
+        if: needs.select.outputs.sysexts != '[]'
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
-                name: [docker, rocm, steam, syncthing, tailscale, virt]
+                name: ${{ fromJson(needs.select.outputs.sysexts) }}
         concurrency:
             group: sysexts-${{ matrix.name }}
             cancel-in-progress: false
@@ -87,7 +145,7 @@ jobs:
 
                       Latest build: `${{ env.VERSION }}` (${{ env.ARCH }})
 
-                      Install via `ujust install-sysext ${{ env.NAME }}` on kyanite-dx.
+                      Install via `ujust install-sysext ${{ env.NAME }}` on kyanite.
 
             - name: Prune assets dropped from SHA256SUMS
               run: |
