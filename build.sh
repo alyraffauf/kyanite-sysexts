@@ -5,23 +5,16 @@ NAME="${1:-rocm}"
 
 cd "$(dirname -- "${BASH_SOURCE[0]}")"
 
-EXT_DIR="mkosi.output/$NAME"
+EXT_DIR="$NAME/mkosi.output/$NAME"
 OUT_FILE="output/$NAME.raw"
 
 mkdir -p "$(dirname "$OUT_FILE")"
 
-# mkosi v26 builds every sub-image in mkosi.images/ on each invocation and
-# has no working --image filter. Stash the others so only base + $NAME run.
-STASH=$(mktemp -d)
-for d in mkosi.images/*/; do
-    n=$(basename "$d")
-    if [[ "$n" != "base" && "$n" != "$NAME" ]]; then
-        mv "$d" "$STASH/"
-    fi
-done
-trap 'mv "$STASH"/* mkosi.images/ 2>/dev/null; rmdir "$STASH" 2>/dev/null' EXIT
+# Build the shared base (subtraction target for the overlay).
+[ -d base/mkosi.output/base ] || (cd base && mkosi --force build)
 
-mkosi --force build
+# Build the requested sysext.
+(cd "$NAME" && mkosi --force build)
 
 # Without SELinux relabel here, missing security.selinux xattrs silently
 # break screen-unlock / sudo / polkit (SSH-side PAM is unaffected).

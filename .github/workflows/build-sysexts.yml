@@ -87,7 +87,7 @@ jobs:
 
                       Latest build: `${{ env.VERSION }}` (${{ env.ARCH }})
 
-                      Install via `ujust install-${{ env.NAME }}-sysext` on kyanite-dx.
+                      Install via `ujust install-sysext ${{ env.NAME }}` on kyanite-dx.
 
             - name: Prune assets dropped from SHA256SUMS
               run: |
