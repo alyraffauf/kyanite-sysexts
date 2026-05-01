@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+
+# libvirt's iscsi-direct storage backend dlopens libiscsi.so.11. libiscsi
+# installs its libs into /usr/lib64/iscsi/ and configures the linker via
+# /etc/ld.so.conf.d/libiscsi-x86_64.conf — but sysexts can only ship under
+# /usr, so the linker config never merges and the dlopen fails at runtime:
+#   failed to load module 'libvirt_storage_backend_iscsi-direct.so':
+#   libiscsi.so.11: cannot open shared object file
+#
+# iSCSI storage pools are niche for desktop virt; drop the affected backends
+# (and the orphaned libiscsi tree) instead of plumbing linker paths around.
+rm -f "$BUILDROOT/usr/lib64/libvirt/storage-backend/libvirt_storage_backend_iscsi"*.so
+rm -rf "$BUILDROOT/usr/lib64/iscsi"
