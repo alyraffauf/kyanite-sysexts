@@ -8,6 +8,6 @@ MatchPattern=docker-@v-x86-64.raw
 
 [Target]
 Type=regular-file
-Path=/var/lib/sysupdate/docker
+Path=/var/lib/sysupdate
 MatchPattern=docker-@v-x86-64.raw
 CurrentSymlink=/var/lib/extensions/docker.raw
