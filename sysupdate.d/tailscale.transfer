@@ -8,6 +8,6 @@ MatchPattern=tailscale-@v-x86-64.raw
 
 [Target]
 Type=regular-file
-Path=/var/lib/sysupdate/tailscale
+Path=/var/lib/sysupdate
 MatchPattern=tailscale-@v-x86-64.raw
 CurrentSymlink=/var/lib/extensions/tailscale.raw

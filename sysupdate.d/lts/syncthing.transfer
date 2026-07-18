@@ -8,6 +8,6 @@ MatchPattern=syncthing-lts-@v-x86-64.raw
 
 [Target]
 Type=regular-file
-Path=/var/lib/sysupdate/syncthing-lts
+Path=/var/lib/sysupdate
 MatchPattern=syncthing-lts-@v-x86-64.raw
 CurrentSymlink=/var/lib/extensions/syncthing.raw
