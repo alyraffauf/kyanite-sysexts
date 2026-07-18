@@ -128,7 +128,8 @@ jobs:
                   cp "../sysupdate.d/${NAME}.transfer" .
 
                   # Cumulative SHA256SUMS; newest wins on filename collision.
-                  if gh release view "sysext-${NAME}" >/dev/null 2>&1; then
+                  if gh release view "sysext-${NAME}" --json assets --jq '.assets[].name' 2>/dev/null \
+                      | grep -Fxq SHA256SUMS; then
                       gh release download "sysext-${NAME}" --pattern SHA256SUMS --output prev.sums
                   else
                       : > prev.sums
@@ -220,7 +221,8 @@ jobs:
                   mv "${NAME}-lts.raw" "$ASSET"
                   cp "../sysupdate.d/lts/${NAME}.transfer" .
 
-                  if gh release view "sysext-lts-${NAME}" >/dev/null 2>&1; then
+                  if gh release view "sysext-lts-${NAME}" --json assets --jq '.assets[].name' 2>/dev/null \
+                      | grep -Fxq SHA256SUMS; then
                       gh release download "sysext-lts-${NAME}" --pattern SHA256SUMS --output prev.sums
                   else
                       : > prev.sums
