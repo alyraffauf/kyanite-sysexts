@@ -17,6 +17,7 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             sysexts: ${{ steps.matrix.outputs.sysexts }}
+            lts_sysexts: ${{ steps.matrix.outputs.lts_sysexts }}
         steps:
             - uses: actions/checkout@v4
               with:
@@ -53,19 +54,31 @@ jobs:
                         - 'build.sh'
                         - 'base/**'
                         - '.github/workflows/build-sysexts.yml'
+                      lts:
+                        - 'build-lts.sh'
+                        - 'lts/**'
+                        - 'sysupdate.d/lts/**'
 
             - id: matrix
               env:
                   ALL: '["docker","rocm","steam","syncthing","tailscale","virt"]'
+                  ALL_LTS: '["docker","syncthing","tailscale"]'
                   CHANGES: ${{ steps.changes.outputs.changes }}
                   SHARED: ${{ steps.changes.outputs.shared }}
+                  LTS_CHANGED: ${{ steps.changes.outputs.lts }}
               run: |
                   if [[ "${{ github.event_name }}" != "push" || "$SHARED" == "true" ]]; then
                       echo "sysexts=$ALL" >>"$GITHUB_OUTPUT"
+                      echo "lts_sysexts=$ALL_LTS" >>"$GITHUB_OUTPUT"
                   else
                       # Drop the synthetic 'shared' entry from the changed list.
-                      filtered=$(echo "$CHANGES" | jq -c 'map(select(. != "shared"))')
+                      filtered=$(echo "$CHANGES" | jq -c 'map(select(. != "shared" and . != "lts"))')
                       echo "sysexts=$filtered" >>"$GITHUB_OUTPUT"
+                      if [[ "$LTS_CHANGED" == "true" ]]; then
+                          echo "lts_sysexts=$ALL_LTS" >>"$GITHUB_OUTPUT"
+                      else
+                          echo 'lts_sysexts=[]' >>"$GITHUB_OUTPUT"
+                      fi
                   fi
 
     build:
@@ -155,4 +168,92 @@ jobs:
                           printf '%s\n' "$KEEP" | grep -qFx "$f" && continue
                           echo "Pruning $f"
                           gh release delete-asset "sysext-${NAME}" "$f" --yes
+                      done
+
+    build-lts:
+        name: Build LTS ${{ matrix.name }} sysext
+        needs: select
+        if: needs.select.outputs.lts_sysexts != '[]'
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                name: ${{ fromJson(needs.select.outputs.lts_sysexts) }}
+        concurrency:
+            group: sysexts-lts-${{ matrix.name }}
+            cancel-in-progress: false
+        container:
+            image: quay.io/centos-bootc/centos-bootc:c10s
+            options: --privileged
+            volumes:
+                - /tmp:/var/tmp
+        env:
+            NAME: ${{ matrix.name }}
+            ARCH: x86-64
+            VERSION: ${{ github.run_number }}
+            KEEP_VERSIONS: 3
+            GH_REPO: ${{ github.repository }}
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install CentOS 10 build dependencies
+              run: |
+                  dnf install -y --setopt=install_weak_deps=False \
+                      git python3-pip squashfs-tools libseccomp \
+                      libselinux-utils policycoreutils selinux-policy-targeted \
+                      dnf-plugins-core gh
+                  python3 -m pip install --no-cache-dir --break-system-packages \
+                      git+https://github.com/systemd/mkosi.git@205dcedd452ac444a28acd1ce5cc0db4d31c83fc
+
+            - name: Build LTS sysext
+              run: bash build-lts.sh "$NAME"
+
+            - name: Stage LTS release artifacts
+              run: |
+                  cd output
+                  ASSET="${NAME}-lts-${VERSION}-${ARCH}.raw"
+                  RAW_RE="${NAME}-lts-[0-9]+-${ARCH}\\.raw"
+                  mv "${NAME}-lts.raw" "$ASSET"
+                  cp "../sysupdate.d/lts/${NAME}.transfer" .
+
+                  if gh release view "sysext-lts-${NAME}" >/dev/null 2>&1; then
+                      gh release download "sysext-lts-${NAME}" --pattern SHA256SUMS --output prev.sums
+                  else
+                      : > prev.sums
+                  fi
+                  sha256sum "$ASSET" "${NAME}.transfer" > new.sums
+                  cat new.sums prev.sums | awk '!seen[$2]++' | sort -k2 > all.sums
+                  rm new.sums prev.sums
+
+                  {
+                      grep -vE "  ${RAW_RE}$" all.sums
+                      grep -E "  ${RAW_RE}$" all.sums | sort -V -k2 | tail -n "$KEEP_VERSIONS"
+                  } | sort -k2 > SHA256SUMS
+                  rm all.sums
+
+            - name: Publish LTS rolling release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: sysext-lts-${{ env.NAME }}
+                  name: sysext-lts-${{ env.NAME }}
+                  files: |
+                      output/${{ env.NAME }}-lts-${{ env.VERSION }}-${{ env.ARCH }}.raw
+                      output/${{ env.NAME }}.transfer
+                      output/SHA256SUMS
+                  body: |
+                      Rolling CentOS Stream 10 release for the **${{ env.NAME }}** sysext.
+
+                      Latest build: `${{ env.VERSION }}` (${{ env.ARCH }})
+
+                      Install via `ujust install-sysext ${{ env.NAME }}` on Kyanite LTS.
+
+            - name: Prune LTS assets dropped from SHA256SUMS
+              run: |
+                  KEEP=$( { awk '{print $2}' output/SHA256SUMS; echo SHA256SUMS; } | sort -u)
+                  gh release view "sysext-lts-${NAME}" --json assets --jq '.assets[].name' \
+                      | while read -r f; do
+                          printf '%s\n' "$KEEP" | grep -qFx "$f" && continue
+                          echo "Pruning $f"
+                          gh release delete-asset "sysext-lts-${NAME}" "$f" --yes
                       done

@@ -15,6 +15,10 @@ Built with [mkosi](https://github.com/systemd/mkosi); merged at runtime via [`sy
 | `tailscale` | Tailscale mesh-VPN client + daemon                                        | pkgs.tailscale.com         |
 | `virt`      | QEMU/KVM + libvirt + edk2-ovmf + virtio drivers                           | Fedora                     |
 
+The `docker`, `syncthing`, and `tailscale` extensions also have a separate
+CentOS Stream 10 track for Kyanite LTS. Install those on LTS only through the
+LTS image's recipes; do not merge Fedora artifacts into a CentOS host.
+
 Each is published as a rolling release (e.g. `sysext-rocm`); the last 3 versions are retained for rollback.
 
 ## Install on kyanite

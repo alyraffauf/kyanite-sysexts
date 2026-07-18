@@ -6,15 +6,18 @@ System extensions for [kyanite](https://github.com/alyraffauf/kyanite). Each sys
 
 ```
 kyanite-sysexts/
-├── build.sh                          # builds base on demand, then $NAME, then squashfs
-├── base/                             # shared subtraction base
+├── build.sh                          # builds Fedora base on demand, then $NAME, then squashfs
+├── build-lts.sh                      # builds CentOS Stream 10 LTS extensions
+├── base/                             # shared Fedora subtraction base
 │   └── mkosi.conf                    # @core + common runtime libs
+├── lts/                              # CentOS Stream 10 base and LTS extensions
 ├── <name>/                           # one directory per sysext
 │   ├── mkosi.conf                    # Distribution=fedora; BaseTrees=../base/...; Overlay=yes
 │   ├── mkosi.extra/usr/lib/extension-release.d/extension-release.<name>
 │   └── mkosi.sandbox/                # OPTIONAL: extra repo files (e.g. rpmfusion, docker.com, tailscale.com)
 │       └── etc/yum.repos.d/*.repo
-├── sysupdate.d/<name>.transfer       # systemd-sysupdate URL contract for the rolling release
+├── sysupdate.d/<name>.transfer       # Fedora systemd-sysupdate URL contract
+├── sysupdate.d/lts/<name>.transfer   # CentOS 10 systemd-sysupdate URL contract
 └── .github/workflows/build-sysexts.yml
 ```
 
@@ -25,6 +28,7 @@ kyanite-sysexts/
 3. `Format=directory` everywhere; final squashfs packing happens in `build.sh`, not mkosi.
 4. `extension-release.<name>` filename and the `ImageId=<name>` setting must match — systemd-sysext refuses to merge if they don't.
 5. **Never ship `/usr/lib/os-release`, `/etc/os-release`, or compiled caches** (`gschemas.compiled`, `mimeinfo.cache`, etc.). `build.sh` strips these post-build to prevent overlay-shadowing host-fuller versions.
+6. LTS extensions must use CentOS Stream 10 packages and SELinux file contexts. Never point an LTS transfer at a Fedora release.
 
 ## ADDING A NEW SYSEXT
 
@@ -45,6 +49,7 @@ Then update **two places** in `.github/workflows/build-sysexts.yml`:
 For third-party repos, add `<name>/mkosi.sandbox/etc/yum.repos.d/<repo>.repo` with `gpgcheck=0` (build-time only; the package binaries themselves are still RPM-signed).
 
 Local validation before pushing: `bash build.sh <name>` — must produce `output/<name>.raw` cleanly.
+For LTS validation, use `bash build-lts.sh <name>` in a privileged CentOS 10 build environment.
 
 ## SELECTIVE BUILD LOGIC
 
