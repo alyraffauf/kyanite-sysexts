@@ -202,7 +202,10 @@ jobs:
                   dnf install -y --setopt=install_weak_deps=False \
                       git python3-pip squashfs-tools libseccomp \
                       libselinux-utils policycoreutils selinux-policy-targeted \
-                      dnf-plugins-core gh
+                      dnf-plugins-core
+                  dnf config-manager --add-repo \
+                      https://cli.github.com/packages/rpm/gh-cli.repo
+                  dnf install -y gh
                   python3 -m pip install --no-cache-dir --break-system-packages \
                       git+https://github.com/systemd/mkosi.git@205dcedd452ac444a28acd1ce5cc0db4d31c83fc
 
