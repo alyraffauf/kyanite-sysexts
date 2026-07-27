@@ -32,6 +32,9 @@ jobs:
               with:
                   list-files: none
                   filters: |
+                      devtools:
+                        - 'devtools/**'
+                        - 'sysupdate.d/devtools.transfer'
                       docker:
                         - 'docker/**'
                         - 'sysupdate.d/docker.transfer'
@@ -61,8 +64,8 @@ jobs:
 
             - id: matrix
               env:
-                  ALL: '["docker","rocm","steam","syncthing","tailscale","virt"]'
-                  ALL_LTS: '["docker","syncthing","tailscale"]'
+                  ALL: '["devtools","docker","rocm","steam","syncthing","tailscale","virt"]'
+                  ALL_LTS: '["devtools","docker","syncthing","tailscale"]'
                   CHANGES: ${{ steps.changes.outputs.changes }}
                   SHARED: ${{ steps.changes.outputs.shared }}
                   LTS_CHANGED: ${{ steps.changes.outputs.lts }}
